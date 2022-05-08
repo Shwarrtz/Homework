@@ -1,0 +1,65 @@
+-- Create DB field protection function
+
+create function protect_found_date() returns trigger language plpgsql as $$
+begin
+
+  new.found_date = old.found_date;
+
+  return new;
+
+end $$;
+
+
+
+
+-- Create DB field protection trigger
+
+CREATE TRIGGER protect_found_date_trigger
+BEFORE UPDATE OF "found_date"
+  ON "companies"
+FOR EACH ROW
+EXECUTE PROCEDURE protect_found_date();
+
+
+
+-- Create found date loop function
+
+create or replace function list_found_date(start_date varchar, end_date varchar)
+returns table (
+	date character varying, 
+    company character varying
+) AS
+$function$
+declare
+  result_rec record;
+  rec record;
+begin
+   IF (start_date = '' or start_date is null or (select is_date(start_date)) is false)
+   THEN
+	  start_date := '2001-01-01';
+   end if;
+   IF (end_date = '' or end_date is null or (select is_date(end_date)) is false)
+   THEN
+	  end_date := now();
+   end if;
+   IF (end_date::date < start_date::date)
+   THEN
+	  start_date := '2001-01-01';
+	  end_date := now();
+   end if;
+   FOR rec IN (SELECT q::date FROM generate_series(start_date::date, end_date::date, '1 day') as q) 
+   LOOP
+       date := rec.q::date;
+       company := (
+           select coalesce(string_agg(c.name, ', '), '') 
+           from companies c
+           where c.found_date::date = rec.q::date
+       );
+       RETURN NEXT;
+   END LOOP;
+end;
+$function$
+language plpgsql;
+
+
+

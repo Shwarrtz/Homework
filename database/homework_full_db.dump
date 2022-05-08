@@ -1,0 +1,1042 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.2 (Ubuntu 14.2-1.pgdg20.04+1+b1)
+-- Dumped by pg_dump version 14.2 (Ubuntu 14.2-1.pgdg20.04+1+b1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: is_date(character varying); Type: FUNCTION; Schema: public; Owner: groot
+--
+
+CREATE FUNCTION public.is_date(s character varying) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+begin
+  perform s::date;
+  return true;
+exception when others then
+  return false;
+end;
+$$;
+
+
+ALTER FUNCTION public.is_date(s character varying) OWNER TO groot;
+
+--
+-- Name: list_found_date(character varying, character varying); Type: FUNCTION; Schema: public; Owner: groot
+--
+
+CREATE FUNCTION public.list_found_date(start_date character varying, end_date character varying) RETURNS TABLE(date character varying, company character varying)
+    LANGUAGE plpgsql
+    AS $$
+declare
+  result_rec record;
+  rec record;
+begin
+   IF (start_date = '' or start_date is null or (select is_date(start_date)) is false)
+   THEN
+	  start_date := '2001-01-01';
+   end if;
+   IF (end_date = '' or end_date is null or (select is_date(end_date)) is false)
+   THEN
+	  end_date := now();
+   end if;
+   IF (end_date::date < start_date::date)
+   THEN
+	  start_date := '2001-01-01';
+	  end_date := now();
+   end if;
+   FOR rec IN (SELECT q::date FROM generate_series(start_date::date, end_date::date, '1 day') as q) 
+   LOOP
+       date := rec.q::date;
+       company := (
+           select coalesce(string_agg(c.name, ', '), '') 
+           from companies c
+           where c.found_date::date = rec.q::date
+       );
+       RETURN NEXT;
+   END LOOP;
+end;
+$$;
+
+
+ALTER FUNCTION public.list_found_date(start_date character varying, end_date character varying) OWNER TO groot;
+
+--
+-- Name: protect_found_date(); Type: FUNCTION; Schema: public; Owner: groot
+--
+
+CREATE FUNCTION public.protect_found_date() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+
+  new.found_date = old.found_date;
+
+  return new;
+
+end $$;
+
+
+ALTER FUNCTION public.protect_found_date() OWNER TO groot;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: activities; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.activities (
+    id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+ALTER TABLE public.activities OWNER TO groot;
+
+--
+-- Name: activities_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.activities_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.activities_id_seq OWNER TO groot;
+
+--
+-- Name: activities_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.activities_id_seq OWNED BY public.activities.id;
+
+
+--
+-- Name: cities; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.cities (
+    id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+ALTER TABLE public.cities OWNER TO groot;
+
+--
+-- Name: cities_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.cities_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.cities_id_seq OWNER TO groot;
+
+--
+-- Name: cities_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.cities_id_seq OWNED BY public.cities.id;
+
+
+--
+-- Name: companies; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.companies (
+    id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    reg_num character varying(255) NOT NULL,
+    found_date timestamp(0) without time zone NOT NULL,
+    country_id bigint NOT NULL,
+    zip_code character varying(255) NOT NULL,
+    city_id bigint NOT NULL,
+    street_address character varying(255) NOT NULL,
+    latitude numeric(8,5) NOT NULL,
+    longitude numeric(8,5) NOT NULL,
+    owner character varying(255) NOT NULL,
+    employees integer NOT NULL,
+    activity_id bigint NOT NULL,
+    active boolean NOT NULL,
+    email character varying(255) NOT NULL,
+    password character varying(255) NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+ALTER TABLE public.companies OWNER TO groot;
+
+--
+-- Name: companies_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.companies_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.companies_id_seq OWNER TO groot;
+
+--
+-- Name: companies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.companies_id_seq OWNED BY public.companies.id;
+
+
+--
+-- Name: countries; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.countries (
+    id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+ALTER TABLE public.countries OWNER TO groot;
+
+--
+-- Name: countries_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.countries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.countries_id_seq OWNER TO groot;
+
+--
+-- Name: countries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.countries_id_seq OWNED BY public.countries.id;
+
+
+--
+-- Name: failed_jobs; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.failed_jobs (
+    id bigint NOT NULL,
+    uuid character varying(255) NOT NULL,
+    connection text NOT NULL,
+    queue text NOT NULL,
+    payload text NOT NULL,
+    exception text NOT NULL,
+    failed_at timestamp(0) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.failed_jobs OWNER TO groot;
+
+--
+-- Name: failed_jobs_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.failed_jobs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.failed_jobs_id_seq OWNER TO groot;
+
+--
+-- Name: failed_jobs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.failed_jobs_id_seq OWNED BY public.failed_jobs.id;
+
+
+--
+-- Name: migrations; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.migrations (
+    id integer NOT NULL,
+    migration character varying(255) NOT NULL,
+    batch integer NOT NULL
+);
+
+
+ALTER TABLE public.migrations OWNER TO groot;
+
+--
+-- Name: migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.migrations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.migrations_id_seq OWNER TO groot;
+
+--
+-- Name: migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.migrations_id_seq OWNED BY public.migrations.id;
+
+
+--
+-- Name: password_resets; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.password_resets (
+    email character varying(255) NOT NULL,
+    token character varying(255) NOT NULL,
+    created_at timestamp(0) without time zone
+);
+
+
+ALTER TABLE public.password_resets OWNER TO groot;
+
+--
+-- Name: personal_access_tokens; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.personal_access_tokens (
+    id bigint NOT NULL,
+    tokenable_type character varying(255) NOT NULL,
+    tokenable_id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    token character varying(64) NOT NULL,
+    abilities text,
+    last_used_at timestamp(0) without time zone,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+ALTER TABLE public.personal_access_tokens OWNER TO groot;
+
+--
+-- Name: personal_access_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.personal_access_tokens_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.personal_access_tokens_id_seq OWNER TO groot;
+
+--
+-- Name: personal_access_tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.personal_access_tokens_id_seq OWNED BY public.personal_access_tokens.id;
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: groot
+--
+
+CREATE TABLE public.users (
+    id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    email character varying(255) NOT NULL,
+    email_verified_at timestamp(0) without time zone,
+    password character varying(255) NOT NULL,
+    remember_token character varying(100),
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+ALTER TABLE public.users OWNER TO groot;
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: groot
+--
+
+CREATE SEQUENCE public.users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.users_id_seq OWNER TO groot;
+
+--
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: groot
+--
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- Name: activities id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.activities ALTER COLUMN id SET DEFAULT nextval('public.activities_id_seq'::regclass);
+
+
+--
+-- Name: cities id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.cities ALTER COLUMN id SET DEFAULT nextval('public.cities_id_seq'::regclass);
+
+
+--
+-- Name: companies id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.companies ALTER COLUMN id SET DEFAULT nextval('public.companies_id_seq'::regclass);
+
+
+--
+-- Name: countries id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.countries ALTER COLUMN id SET DEFAULT nextval('public.countries_id_seq'::regclass);
+
+
+--
+-- Name: failed_jobs id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.failed_jobs ALTER COLUMN id SET DEFAULT nextval('public.failed_jobs_id_seq'::regclass);
+
+
+--
+-- Name: migrations id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.migrations ALTER COLUMN id SET DEFAULT nextval('public.migrations_id_seq'::regclass);
+
+
+--
+-- Name: personal_access_tokens id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.personal_access_tokens ALTER COLUMN id SET DEFAULT nextval('public.personal_access_tokens_id_seq'::regclass);
+
+
+--
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Data for Name: activities; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.activities (id, name, created_at, updated_at) FROM stdin;
+1	Car	2022-05-08 16:06:45	2022-05-08 16:06:45
+2	Building Industry	2022-05-08 16:06:45	2022-05-08 16:06:45
+3	Growing Plants	2022-05-08 16:06:45	2022-05-08 16:06:45
+4	IT	2022-05-08 16:06:45	2022-05-08 16:06:45
+5	Food	2022-05-08 16:06:45	2022-05-08 16:06:45
+6	Kocsi	2022-05-08 16:07:19	2022-05-08 16:07:19
+\.
+
+
+--
+-- Data for Name: cities; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.cities (id, name, created_at, updated_at) FROM stdin;
+1	Villa Verde	2022-05-08 16:06:45	2022-05-08 16:06:45
+2	Bahawalnagar	2022-05-08 16:06:45	2022-05-08 16:06:45
+3	Lagundo/Algund	2022-05-08 16:06:45	2022-05-08 16:06:45
+4	Lonquimay	2022-05-08 16:06:45	2022-05-08 16:06:45
+5	Pelluhue	2022-05-08 16:06:45	2022-05-08 16:06:45
+6	Flawinne	2022-05-08 16:06:45	2022-05-08 16:06:45
+7	Lacombe County	2022-05-08 16:06:45	2022-05-08 16:06:45
+8	Selkirk	2022-05-08 16:06:45	2022-05-08 16:06:45
+9	Pittsburgh	2022-05-08 16:06:45	2022-05-08 16:06:45
+10	Kamarhati	2022-05-08 16:06:45	2022-05-08 16:06:45
+11	Laon	2022-05-08 16:06:45	2022-05-08 16:06:45
+12	Westmount	2022-05-08 16:06:45	2022-05-08 16:06:45
+13	La Cisterna	2022-05-08 16:06:45	2022-05-08 16:06:45
+14	Genk	2022-05-08 16:06:45	2022-05-08 16:06:45
+15	Remscheid	2022-05-08 16:06:45	2022-05-08 16:06:45
+16	Norrköping	2022-05-08 16:06:45	2022-05-08 16:06:45
+17	Ipís	2022-05-08 16:06:45	2022-05-08 16:06:45
+18	Dokkum	2022-05-08 16:06:45	2022-05-08 16:06:45
+19	Kalat	2022-05-08 16:06:46	2022-05-08 16:06:46
+20	Kassel	2022-05-08 16:06:46	2022-05-08 16:06:46
+21	Bath	2022-05-08 16:06:46	2022-05-08 16:06:46
+22	Arbre	2022-05-08 16:06:46	2022-05-08 16:06:46
+23	Maransart	2022-05-08 16:06:46	2022-05-08 16:06:46
+24	Denderbelle	2022-05-08 16:06:46	2022-05-08 16:06:46
+25	Ingelheim	2022-05-08 16:06:46	2022-05-08 16:06:46
+26	Retiro	2022-05-08 16:06:46	2022-05-08 16:06:46
+27	Sambreville	2022-05-08 16:06:46	2022-05-08 16:06:46
+28	Salamanca	2022-05-08 16:06:46	2022-05-08 16:06:46
+29	Leipzig	2022-05-08 16:06:46	2022-05-08 16:06:46
+30	Znamensk	2022-05-08 16:06:46	2022-05-08 16:06:46
+31	Brighton	2022-05-08 16:06:46	2022-05-08 16:06:46
+32	Sitapur	2022-05-08 16:06:46	2022-05-08 16:06:46
+33	Chimbarongo	2022-05-08 16:06:46	2022-05-08 16:06:46
+34	Ebenthal in Kärnten	2022-05-08 16:06:46	2022-05-08 16:06:46
+35	Ciudad Obregón	2022-05-08 16:06:46	2022-05-08 16:06:46
+36	Alcalá de Henares	2022-05-08 16:06:46	2022-05-08 16:06:46
+37	Tonk	2022-05-08 16:06:46	2022-05-08 16:06:46
+38	Madrid	2022-05-08 16:06:47	2022-05-08 16:06:47
+39	Bonnyrigg	2022-05-08 16:06:47	2022-05-08 16:06:47
+40	Gorbea	2022-05-08 16:06:47	2022-05-08 16:06:47
+41	Zona Bananera	2022-05-08 16:06:47	2022-05-08 16:06:47
+42	Springfield	2022-05-08 16:06:47	2022-05-08 16:06:47
+43	Fort McPherson	2022-05-08 16:06:47	2022-05-08 16:06:47
+44	Belo Horizonte	2022-05-08 16:06:47	2022-05-08 16:06:47
+45	Aieta	2022-05-08 16:06:47	2022-05-08 16:06:47
+46	Wagga Wagga	2022-05-08 16:06:47	2022-05-08 16:06:47
+47	Mainz	2022-05-08 16:06:47	2022-05-08 16:06:47
+48	Bouwel	2022-05-08 16:06:47	2022-05-08 16:06:47
+49	Villers-sur-Semois	2022-05-08 16:06:47	2022-05-08 16:06:47
+50	Ereğli	2022-05-08 16:06:47	2022-05-08 16:06:47
+51	Galzignano Terme	2022-05-08 16:06:47	2022-05-08 16:06:47
+52	General Escobedo	2022-05-08 16:06:47	2022-05-08 16:06:47
+53	Reno	2022-05-08 16:06:47	2022-05-08 16:06:47
+54	Blankenberge	2022-05-08 16:06:47	2022-05-08 16:06:47
+55	Llanquihue	2022-05-08 16:06:47	2022-05-08 16:06:47
+56	Warminster	2022-05-08 16:06:47	2022-05-08 16:06:47
+57	Jackson	2022-05-08 16:06:48	2022-05-08 16:06:48
+58	Eisenhüttenstadt	2022-05-08 16:06:48	2022-05-08 16:06:48
+59	Stroitel	2022-05-08 16:06:48	2022-05-08 16:06:48
+60	Villers-Poterie	2022-05-08 16:06:48	2022-05-08 16:06:48
+61	Falciano del Massico	2022-05-08 16:06:48	2022-05-08 16:06:48
+62	Plymouth	2022-05-08 16:06:48	2022-05-08 16:06:48
+63	Bhind	2022-05-08 16:06:48	2022-05-08 16:06:48
+64	Tiltil	2022-05-08 16:06:48	2022-05-08 16:06:48
+65	Zandvoorde	2022-05-08 16:06:48	2022-05-08 16:06:48
+66	Morinville	2022-05-08 16:06:48	2022-05-08 16:06:48
+67	Colledimacine	2022-05-08 16:06:48	2022-05-08 16:06:48
+68	Taber	2022-05-08 16:06:48	2022-05-08 16:06:48
+69	Requínoa	2022-05-08 16:06:48	2022-05-08 16:06:48
+70	Rostock	2022-05-08 16:06:48	2022-05-08 16:06:48
+71	Puerto Colombia	2022-05-08 16:06:48	2022-05-08 16:06:48
+72	Freirina	2022-05-08 16:06:48	2022-05-08 16:06:48
+73	Camponogara	2022-05-08 16:06:48	2022-05-08 16:06:48
+74	Siquirres	2022-05-08 16:06:49	2022-05-08 16:06:49
+75	Surabaya	2022-05-08 16:06:49	2022-05-08 16:06:49
+76	Meeuwen-Gruitrode	2022-05-08 16:06:49	2022-05-08 16:06:49
+77	Sudhanoti	2022-05-08 16:06:49	2022-05-08 16:06:49
+78	Joondalup	2022-05-08 16:06:49	2022-05-08 16:06:49
+79	Bihain	2022-05-08 16:06:49	2022-05-08 16:06:49
+80	Montague	2022-05-08 16:06:49	2022-05-08 16:06:49
+81	Bras	2022-05-08 16:06:49	2022-05-08 16:06:49
+82	Dole	2022-05-08 16:06:49	2022-05-08 16:06:49
+83	Río Ibáñez	2022-05-08 16:06:49	2022-05-08 16:06:49
+84	Rixensart	2022-05-08 16:06:49	2022-05-08 16:06:49
+85	Allentown	2022-05-08 16:06:49	2022-05-08 16:06:49
+86	Cinisi	2022-05-08 16:06:49	2022-05-08 16:06:49
+87	Le Cannet	2022-05-08 16:06:49	2022-05-08 16:06:49
+88	Valéncia	2022-05-08 16:06:49	2022-05-08 16:06:49
+89	Wambeek	2022-05-08 16:06:49	2022-05-08 16:06:49
+90	Ponta Grossa	2022-05-08 16:06:49	2022-05-08 16:06:49
+91	Temuco	2022-05-08 16:06:50	2022-05-08 16:06:50
+92	Lac-Serent	2022-05-08 16:06:50	2022-05-08 16:06:50
+93	Longvilly	2022-05-08 16:06:50	2022-05-08 16:06:50
+94	Bowling Green	2022-05-08 16:06:50	2022-05-08 16:06:50
+95	Böblingen	2022-05-08 16:06:50	2022-05-08 16:06:50
+96	Tamworth	2022-05-08 16:06:50	2022-05-08 16:06:50
+97	Budapest	2022-05-08 16:07:19	2022-05-08 16:07:19
+\.
+
+
+--
+-- Data for Name: companies; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.companies (id, name, reg_num, found_date, country_id, zip_code, city_id, street_address, latitude, longitude, owner, employees, activity_id, active, email, password, created_at, updated_at) FROM stdin;
+1	Mauris PC	177874-5578	1990-05-01 00:00:00	1	71137	1	P.O. Box 391, 1457 Sed St.	50.67063	-75.37700	Travis Elliott	11	1	f	donec.sollicitudin@duisacarcu.com	$2y$10$uuvkp3uZbCDwyIzrVFWpIeYV9mSsRs3M53Ex73TaAghLTn/ozzH72	2022-05-08 16:06:45	2022-05-08 16:06:45
+2	Magna Lorem Inc.	896098-0855	1991-10-22 00:00:00	2	60934	2	6753 Sit Street	4.69671	-101.06612	Hamilton Pearson	62	2	f	metus.facilisis@proinsedturpis.ca	$2y$10$UzkxdF2h4yNYbaVshHDtfORA61oADG9vVpLeySausEvlSCkilp0zG	2022-05-08 16:06:45	2022-05-08 16:06:45
+3	Egestas Hendrerit Neque LLP	615308-4733	1994-06-10 00:00:00	3	442580	3	P.O. Box 857, 1455 Nullam Street	89.75893	-125.99941	Todd Douglas	230	2	t	lacus.quisque@posuerecubiliacurae.org	$2y$10$rgqbDv.ekte15roEZasMsec1O8w4VKp.5ph3AoTbJ98t/Y05XKPSe	2022-05-08 16:06:45	2022-05-08 16:06:45
+4	Ipsum Ac Mi Company	609476-5515	1984-11-28 00:00:00	4	64967	4	Ap #191-7809 Nec Ave	71.41273	-64.46302	Hayes Harper	491	3	f	convallis.dolor@perinceptos.ca	$2y$10$kD1dorYvTxzo4bl6ybZKw.ZhT12DQkER9vXNCjooGlQRgfNILli.W	2022-05-08 16:06:45	2022-05-08 16:06:45
+5	Nibh Phasellus Nulla Consulting	875175-2307	2013-12-12 00:00:00	5	61307	5	P.O. Box 371, 6261 Non, St.	-17.63940	55.73754	Norman Walls	401	4	t	massa.non.ante@auctor.co.uk	$2y$10$pr8yA82RB.oijYTxj13xKORZCpuM92d7PBb6jIurkweKmlZa/CSXq	2022-05-08 16:06:45	2022-05-08 16:06:45
+6	Ac Corp.	047597-1263	1990-05-12 00:00:00	6	6648	6	481-9974 Vestibulum Road	81.44500	-103.01562	Jerry Herman	399	1	t	ornare.sagittis@orciadipiscing.org	$2y$10$oFpZx66KltR2s5g8aLfzJe9D1IIAvIxtkEQyQQ48WK5nuQAK/HzSC	2022-05-08 16:06:45	2022-05-08 16:06:45
+7	Ut Molestie Company	387343-2466	2019-11-08 00:00:00	7	DB15 0TF	7	Ap #781-3660 Leo. Av.	-11.06026	-150.11469	Nicholas Stuart	177	2	t	donec@etiam.com	$2y$10$3UQsYplwsXnz.hSupwhXMe3YidvALkBBF4ZD8N3G5FnrNHMPe5S5e	2022-05-08 16:06:45	2022-05-08 16:06:45
+8	Justo Eu Arcu Inc.	495058-7198	2015-07-02 00:00:00	8	2116	8	Ap #385-8575 Nullam Rd.	9.44015	-126.00997	Amery Huber	326	5	f	mollis.dui.in@utpharetrased.co.uk	$2y$10$bKT/RT5IjdIz29tBAAA/luDHql5OzLid3zydyo0DPyrY2tQrmaN/2	2022-05-08 16:06:45	2022-05-08 16:06:45
+9	Eu Institute	496281-9175	2000-06-11 00:00:00	9	9469	9	P.O. Box 924, 1815 Elit. Av.	-83.85754	21.33176	Gage Duncan	99	5	t	nunc@ac.org	$2y$10$fh0ILwQoV5ZHbj62y7JgluhLu7WvCIhRvDoDDzNPYIfo1Gorh0J.O	2022-05-08 16:06:45	2022-05-08 16:06:45
+10	Rutrum Consulting	404429-0841	1995-12-02 00:00:00	10	528938	10	Ap #732-2307 Augue St.	86.50586	-94.03420	Hashim Curry	132	3	f	quis.turpis@conubianostra.org	$2y$10$D7l7hiGPA0.7jGVKNqqxDOw0650oEpOWSrTwNOKTFQydviFI4AQvy	2022-05-08 16:06:45	2022-05-08 16:06:45
+11	Dapibus Quam Limited	874092-9669	2014-09-14 00:00:00	11	Z5 0NG	11	150-2314 Dis Rd.	-61.57830	-113.53350	Paki Elliott	439	2	f	non.nisi@et.org	$2y$10$dqElYNm/cR6JW7Rd7wlYEOUSqNU6uKq9.xTXj6o04KoinEKSZrS4S	2022-05-08 16:06:45	2022-05-08 16:06:45
+12	Ac Institute	147153-5631	2020-06-25 00:00:00	12	8918	12	757-1405 Tempor, Rd.	-29.21539	80.31999	Nathaniel Summers	202	3	t	ullamcorper.magna@massaquisque.ca	$2y$10$htOkBubsmC.vuPJ0t6tfKOV/chvVqWGi5m7ZpbGNmJD8H1V1J/oTq	2022-05-08 16:06:45	2022-05-08 16:06:45
+13	Adipiscing Fringilla Consulting	943211-1384	2008-07-01 00:00:00	13	V9N 3K8	13	389-4506 Malesuada Rd.	-40.90990	0.55558	Gray Nicholson	250	3	f	amet.massa@curabitur.co.uk	$2y$10$h9Eik6YTeb3Qm1ShhVQL/ezgxM721lc1g2E6b0b2LBOIJx4Qg0VX.	2022-05-08 16:06:45	2022-05-08 16:06:45
+14	Urna Et Arcu Incorporated	296422-0780	1980-03-13 00:00:00	14	51-352	14	Ap #126-6407 Ullamcorper, St.	-48.30411	166.02567	Joel Bartlett	48	3	t	egestas.nunc@lobortis.net	$2y$10$avvoW3XFLlqrptzo45y9/efmZci9IC0mSqgk2mH738H/P02vyDUY2	2022-05-08 16:06:45	2022-05-08 16:06:45
+15	Nam Porttitor Scelerisque Industries	832132-1518	1982-04-13 00:00:00	15	926236	15	P.O. Box 648, 9240 Suspendisse St.	34.05535	71.44296	Cain Coleman	117	1	t	quam.curabitur.vel@vivamusnibhdolor.co.uk	$2y$10$PkjyUwZ00liVeUxlAkM9f.1JETacczmxGXE3lkj4q5Nch.YqfdMfm	2022-05-08 16:06:45	2022-05-08 16:06:45
+16	Mauris PC	038700-0656	1989-02-16 00:00:00	16	57717	16	Ap #859-4029 Vivamus Av.	-79.15152	-16.95243	Joshua Farley	352	2	t	lacinia.sed@mauriseu.ca	$2y$10$vETbem/n3MMZVwhMvW1Uwefwz4j9PIptU74/8EybE0WfosVLo1q9C	2022-05-08 16:06:45	2022-05-08 16:06:45
+17	Rhoncus Nullam Velit LLP	113075-2072	1977-01-29 00:00:00	17	98940	17	3927 Adipiscing Av.	-5.63582	156.31194	Grady Brady	310	1	t	commodo@conguea.com	$2y$10$sgxgnt52JDzwbh87IfPUMOYa95xsPOS5gN/JjLKRjEDVpU8Qg4Fgm	2022-05-08 16:06:45	2022-05-08 16:06:45
+18	Sagittis Placerat PC	897659-4542	2000-07-27 00:00:00	18	5625	18	1405 Mauris St.	-39.51426	58.90849	Hoyt Sparks	134	1	t	in.consequat@tellusidnunc.net	$2y$10$LSOA9bQZnTKsxEMvYRwpTuLqeBv0wLo8n0qvPypjhQqYVXGlXlJ2q	2022-05-08 16:06:45	2022-05-08 16:06:45
+19	Ligula Aliquam Erat PC	349714-9892	1998-04-19 00:00:00	19	18789-978	19	9174 Morbi Street	66.41582	41.43761	Jamal Miller	352	4	f	cras.dolor@egestashendrerit.edu	$2y$10$TTAFB63fGkw6ZLzL7z8U7OFueurAliMDEBPP6vOF6t/MVA4zEUUxS	2022-05-08 16:06:46	2022-05-08 16:06:46
+20	Enim Consequat Corporation	468296-7726	1993-11-06 00:00:00	20	25017	20	207-8810 Eleifend Street	18.59296	169.04322	Blake Armstrong	495	1	f	facilisi.sed.neque@cras.ca	$2y$10$xwzeNFIhrSIxQL0NrCuQN.LcsSkU92OwUhorzNARAZW.JYnPEbw7u	2022-05-08 16:06:46	2022-05-08 16:06:46
+21	Vulputate Mauris Limited	015506-0312	1978-03-28 00:00:00	21	92256	21	P.O. Box 593, 1211 Enim Rd.	-69.00851	-146.53661	Griffin Mcgowan	216	2	f	in@erat.org	$2y$10$7/GO3FbK3o3hNvTpiiyPLeUAEQiZpNwNc4d/Ge0/hIrO/3gWXrTeO	2022-05-08 16:06:46	2022-05-08 16:06:46
+22	Aliquam Enim Corporation	298024-3410	1997-04-15 00:00:00	22	40134-63707	22	P.O. Box 812, 6627 Ridiculus Rd.	33.13149	113.64074	Ralph Everett	94	2	t	nulla@odio.co.uk	$2y$10$EQ8tVfrDUavlFh.VXkzpsOoen1IgHO0J1BBShLrRZlnAIBqvKmzGu	2022-05-08 16:06:46	2022-05-08 16:06:46
+23	Ac Consulting	213715-0500	1994-05-08 00:00:00	23	27343	23	Ap #733-9569 Tempor Street	53.31115	-122.27091	Hiram Jimenez	441	3	t	tortor.dictum.eu@integer.co.uk	$2y$10$Mjmm6mZksFKhRrqAw1xMGOVNCHlESOEMH/fuL6Yl2kn6QiEtyecNq	2022-05-08 16:06:46	2022-05-08 16:06:46
+24	Aliquet Phasellus Foundation	299975-9497	2016-07-19 00:00:00	24	94634	24	P.O. Box 350, 5648 Rutrum. Av.	-19.41137	63.36240	Ezra Garrison	442	4	t	aliquet.molestie@dolor.edu	$2y$10$deicDySK4ZBs9JzRHG3ez.hPHmmwk9.atWeh2sbHSmN9401TEs49e	2022-05-08 16:06:46	2022-05-08 16:06:46
+25	Vel Lectus Consulting	284240-1461	1980-07-23 00:00:00	25	69530	25	868-3049 Aliquam Ave	-69.10617	-39.25967	Cain Colon	388	3	t	vulputate@odionaminterdum.org	$2y$10$ZJQgrnqeHUzkvv6poxWXxO8CnyT2uR//7FUmyVi/Sij/XZEemoRxm	2022-05-08 16:06:46	2022-05-08 16:06:46
+26	Diam Lorem Auctor Limited	737022-2007	2014-08-06 00:00:00	21	3025	26	115-4328 Mollis. Avenue	25.26154	88.27236	Lucian Guthrie	55	1	t	iaculis.odio@risusodioauctor.org	$2y$10$MsP5.W7cuAeD3FFsaCYpfuW2Q2KKMkEwXzz7Ce2BUo6Blv1NZqn5m	2022-05-08 16:06:46	2022-05-08 16:06:46
+27	Fusce Aliquet LLC	505774-5464	2012-07-07 00:00:00	5	56191	27	P.O. Box 611, 2079 A Street	-45.02808	-32.71053	Gray Elliott	232	2	t	duis.a.mi@faucibus.org	$2y$10$.7kdHfTMGiLJTBUwMVv5.OAD2jh95uJAe01n6N32ukuwNT1qHvkGq	2022-05-08 16:06:46	2022-05-08 16:06:46
+28	Duis Risus Odio Associates	664171-0568	1981-07-29 00:00:00	26	42584	28	621-155 Non Rd.	-56.14818	-23.17769	Justin Deleon	229	1	f	rhoncus.proin@nullaatsem.org	$2y$10$6txHnETul8K3BXIWB4/WvODMp4CJSFR9wIzqBpDlG89/45iT4AcSC	2022-05-08 16:06:46	2022-05-08 16:06:46
+29	Mattis Ornare Incorporated	644302-8698	1976-06-18 00:00:00	27	492928	29	Ap #418-6201 Aliquam Av.	-39.22581	42.64547	Kareem Freeman	346	3	f	commodo@mauris.com	$2y$10$iyhGC.hyT4cYYPbnKoXyK..o1lqlp2pzyNQ5mG1NrQrMSufsZgytq	2022-05-08 16:06:46	2022-05-08 16:06:46
+30	Nisl Corp.	446969-7454	1979-09-25 00:00:00	28	18662	30	527-6157 Feugiat St.	-71.06829	-7.76610	Philip Garcia	405	1	f	faucibus@nibhquisque.net	$2y$10$Rq/mk6dB2A8c96XDAZ0D1OY6YLR5aES9BGENC1pB4nVk8OxMRrcmu	2022-05-08 16:06:46	2022-05-08 16:06:46
+31	Ligula Aenean Gravida Consulting	165190-5026	1977-02-06 00:00:00	29	51530	31	528-2561 Morbi Ave	20.87619	37.10334	Rooney Gardner	101	2	t	risus.duis.a@malesuadafames.ca	$2y$10$xjTTt9HCTy0NTX/ga.QTIemd/3YzqdgH2LPupTRL9IxzuFYRbfLp2	2022-05-08 16:06:46	2022-05-08 16:06:46
+32	Cras Sed Institute	793259-0073	2018-10-28 00:00:00	30	Z8134	32	976-2786 Neque Ave	-78.81951	102.88379	Lucius Miller	435	3	f	porttitor.scelerisque.neque@lectuscum.edu	$2y$10$6z4rkZuULqLLWKMk6UWBheflZfHlpPoLGBMg4ML7a3F9Np7ehKeB.	2022-05-08 16:06:46	2022-05-08 16:06:46
+33	Nibh Ltd	609207-8762	2007-11-21 00:00:00	31	T49 8AU	33	829-2022 Dis Ave	-46.72476	147.20419	Gannon Park	320	2	f	in.faucibus@vulputate.net	$2y$10$ULx06sCprgyuhVav8..Ah.lNvSsGy52GfiWlCIG2dGIow/jwlG55i	2022-05-08 16:06:46	2022-05-08 16:06:46
+34	Curae; Phasellus Limited	308488-6708	2009-05-22 00:00:00	32	MX2C 2DE	34	703-8299 Tellus. St.	55.56007	57.54254	Levi Vance	25	2	f	cursus.et.eros@urnanuncquis.org	$2y$10$R7cVuDhqewpUPPxO4CUWruxxXRx2bsqVu9K8wiOAIwu0LPNEAJ.46	2022-05-08 16:06:46	2022-05-08 16:06:46
+35	Nec Diam PC	384120-5713	1989-06-14 00:00:00	33	Z5716	35	P.O. Box 671, 5515 Ornare St.	50.92743	-127.58284	Neil Hampton	62	1	t	magna.tellus@quisquetinciduntpede.edu	$2y$10$ZcXrpnXxMU0/pKqiohBRH.oCGDn/UvEnW0EdSjoIIDiRSirs6/iA2	2022-05-08 16:06:46	2022-05-08 16:06:46
+36	Sem Egestas Blandit Foundation	298751-6321	1976-09-20 00:00:00	34	L0Z 4Y2	36	Ap #589-6402 In Av.	-35.61260	-132.46325	Steel Watkins	291	3	f	dictum@necleo.net	$2y$10$cVwWSthWeiLvRX9bCDkLa.OL94JcxbsUeRoPPLB77VQ/4Z3mKLE0u	2022-05-08 16:06:46	2022-05-08 16:06:46
+37	Enim Foundation	479882-8747	2017-02-11 00:00:00	35	E4T 4W7	37	P.O. Box 250, 6935 Lorem, St.	71.15153	-22.73678	Oleg Walter	303	3	f	montes.nascetur@mattisvelit.com	$2y$10$0lob/ZrbpHBtpNYXqKlDHuQ2b9t.QMMtvayvn6CvH8GY2zOLska0m	2022-05-08 16:06:46	2022-05-08 16:06:46
+38	Orci Company	193154-2755	2004-12-25 00:00:00	36	RE42 1LB	38	944-3039 Consectetuer Rd.	-17.89947	177.50542	Hunter Walls	319	5	t	suspendisse.aliquet.molestie@utcursus.com	$2y$10$/blUQ0xjvR7wgAh3a4FrC.9o7z3KyAFGdmDPENAZY4cKNxL57vZYK	2022-05-08 16:06:47	2022-05-08 16:06:47
+39	Nisi Magna Industries	458912-8406	1995-05-12 00:00:00	37	C88 1SA	39	540-4734 Nisi St.	-40.42055	126.40650	Baker Stephenson	321	5	t	mattis.semper.dui@velit.co.uk	$2y$10$FDh5WID7EGdwK1MAAl5c8emYZ8Fb5s4SbDl22ACmjqzdZzienxZDm	2022-05-08 16:06:47	2022-05-08 16:06:47
+40	In At Pede Ltd	399639-6861	2007-05-19 00:00:00	23	46738	40	Ap #494-1350 Orci, Rd.	-44.48784	21.20729	Bradley Small	474	2	t	nam.porttitor@lacusut.com	$2y$10$CmCfnvO9H2xbYmxDzOD5UeIqLjR7lEGOKVCpl9oOySxhigXXXc3eC	2022-05-08 16:06:47	2022-05-08 16:06:47
+41	Bibendum Ullamcorper Duis LLP	697656-2709	2012-05-07 00:00:00	13	4421	41	P.O. Box 798, 7239 Ligula. St.	-26.71934	136.00369	Aidan Ortiz	204	3	f	nunc.quis.arcu@anunc.org	$2y$10$3gJG6NS/altqH3pbsU5fW.lyhbScNnwiQE0VfPLX6BA4yDB6LdElO	2022-05-08 16:06:47	2022-05-08 16:06:47
+42	Orci Phasellus LLP	862779-8948	2019-02-06 00:00:00	38	60410	42	Ap #759-3004 Eu, Ave	29.01183	-112.70922	Camden Neal	191	2	t	eu@sed.ca	$2y$10$LWBgNPtzO/RM2QSrmWCxsOOo/heoLpzoQgqii7C81mmmazW2oiv.S	2022-05-08 16:06:47	2022-05-08 16:06:47
+43	Etiam Laoreet Libero PC	505947-1119	1980-02-29 00:00:00	39	2940	43	Ap #205-6670 Lobortis Street	64.29502	-9.12611	Hilel Hays	98	3	t	mauris@crasvehiculaaliquet.edu	$2y$10$EqfaYEnUURf56dkimcqQKOenLMBN2u8SFEDAehTjQiy4lW4ggPEP.	2022-05-08 16:06:47	2022-05-08 16:06:47
+44	Congue Elit Sed PC	054324-8066	1981-12-22 00:00:00	40	37939	44	6105 Non Av.	14.90896	43.65768	Walter Riggs	338	3	f	imperdiet.nec@velsapien.ca	$2y$10$5lpr00QRg8I2/hEQRw98HuupfdOCMh7N67hmsD3i5/kBvZB1iIzp2	2022-05-08 16:06:47	2022-05-08 16:06:47
+45	Tincidunt Congue Turpis Corporation	665763-8158	2017-12-18 00:00:00	41	291325	45	P.O. Box 673, 7687 Dui St.	36.76340	17.96623	Paul Lancaster	112	3	t	natoque.penatibus@nisl.ca	$2y$10$CbI7CKaCdxcQ2qoOlxw3yeXgJo7mBE.GmhJuWxA2uySvJdeggFLJ.	2022-05-08 16:06:47	2022-05-08 16:06:47
+46	Netus Et Malesuada Corporation	348579-3487	2001-12-06 00:00:00	42	1174	46	319-2330 Lacinia St.	34.72568	167.76303	Wayne Tucker	369	1	t	eu.tellus.phasellus@quisquefringilla.net	$2y$10$lkCizaCKdQ3PdUBGFpaQouW7UUZ8bKSfK2g5Vlvyk9RZxqaoOhzk2	2022-05-08 16:06:47	2022-05-08 16:06:47
+47	Vehicula Pellentesque Corp.	809126-6471	1980-10-06 00:00:00	16	1028	47	788-8720 Velit Street	-86.07504	70.40259	Samuel Le	453	2	f	donec@tellusaeneanegestas.edu	$2y$10$eNyk.VHwj51LUVG77zuhu.0O5Ou99meyuKvtL5cQLSEUH4KXbmcjK	2022-05-08 16:06:47	2022-05-08 16:06:47
+48	Ante Bibendum Ullamcorper Foundation	952209-0514	1987-04-09 00:00:00	33	984637	48	P.O. Box 863, 9246 Interdum. Avenue	76.39694	34.35133	Aristotle Noble	282	3	t	fusce.dolor@mauriselitdictum.edu	$2y$10$nu2HlyrBg0mJutb/r48fd.UBeg2hTprNLISyaGwk/iyOrvf.CbE32	2022-05-08 16:06:47	2022-05-08 16:06:47
+49	Mauris Ipsum Inc.	229141-4403	1999-09-02 00:00:00	43	Z1900	49	7076 Et Av.	-55.29531	-85.93836	Phillip Erickson	3	3	f	augue.malesuada.malesuada@sodalesmauris.co.uk	$2y$10$WGBkgcumz8Q5grVpyjJO0.ccvVvCTKNIlbZ25PVCFqXtI77HEFGmO	2022-05-08 16:06:47	2022-05-08 16:06:47
+50	Sit Amet Consectetuer Inc.	229482-3634	1977-12-19 00:00:00	44	5738	50	Ap #320-4007 Mi Avenue	-64.51829	-165.12548	Uriel Blair	99	1	f	nibh@diamluctus.edu	$2y$10$wgs6MfcUWRejud8Q0fVlYuQpAI/7FUupSNawvHmPWjnHUgrIc4i0O	2022-05-08 16:06:47	2022-05-08 16:06:47
+51	Accumsan Laoreet Ipsum LLP	685555-2490	2000-07-31 00:00:00	45	19417	51	617-2164 Sem Rd.	16.83673	29.97678	Alec Best	308	5	f	ut@loremvehicula.net	$2y$10$YvEbSf6Tpbig7ckwYTjOCuX2p5JbvGmz7NLf6fMzJl8YovBiiyw3C	2022-05-08 16:06:47	2022-05-08 16:06:47
+52	Ut Erat Sed LLC	616405-8320	1981-12-01 00:00:00	46	5855	52	7817 Mauris Road	-10.94425	78.59853	Brett Vance	43	2	t	tellus.faucibus.leo@donecnibh.com	$2y$10$t/OT0CXRBJbIUm6lTVJkiOTPC16npuAgkZCZWw8mAuetZCkbShWPK	2022-05-08 16:06:47	2022-05-08 16:06:47
+53	Diam Proin Limited	043851-7658	1997-12-28 00:00:00	47	WO9J 9RO	53	P.O. Box 229, 7505 Orci St.	87.77386	168.01604	Vernon Harris	56	2	t	sem.nulla.interdum@luctusfelis.org	$2y$10$EFXJ9ZwaJuqVtDMbIQMUH.lkUlHdA4u7KOpN4g9PF9VXibRtoNBSa	2022-05-08 16:06:47	2022-05-08 16:06:47
+54	Non Sapien Industries	592842-3614	1993-11-14 00:00:00	48	8630 PX	54	P.O. Box 919, 7986 Consequat Ave	76.44835	99.70048	Cole Hopper	72	4	t	metus.aliquam.erat@ametrisusdonec.co.uk	$2y$10$tJ7Q4mhcU5KI5GYGHpi43e4jHA.pJRL80wenlLjGjuuZkIK9KJ41.	2022-05-08 16:06:47	2022-05-08 16:06:47
+55	Feugiat Metus Sit Ltd	296701-2515	1976-10-31 00:00:00	49	40323	55	Ap #486-6806 Ornare Rd.	11.36357	8.23815	Colton Stein	281	1	f	donec@acsemut.co.uk	$2y$10$CplgBS50rlB.yebM4hh4GO7zRY0LwBssn/IwWO0ehNe9KMP4R4V1C	2022-05-08 16:06:47	2022-05-08 16:06:47
+56	Et Euismod Et Consulting	934575-2878	2019-02-21 00:00:00	40	55507	56	Ap #974-3390 Suspendisse Avenue	-58.95948	29.22972	Demetrius Holloway	396	5	f	proin.nisl.sem@mattis.ca	$2y$10$AbTX6NG9JcgQUh.sq52HSOd1v0EDsmLrtfbHyfMIE1xXh3mNUubiO	2022-05-08 16:06:47	2022-05-08 16:06:47
+57	Mollis PC	212117-5679	1989-02-17 00:00:00	9	2938	57	Ap #348-2018 Lectus Rd.	-51.36397	-149.81456	Eaton Pennington	397	2	t	vitae.erat@sapien.org	$2y$10$izoUiIdaYfkp0bDJuVlZROT3hknFcwwwhnY.nI4dEWIxa0EMi3dOO	2022-05-08 16:06:48	2022-05-08 16:06:48
+58	Aliquet Molestie Tellus Company	857403-6045	1998-11-20 00:00:00	50	8046	58	P.O. Box 303, 3224 Vitae Rd.	17.36283	-10.46160	Emmanuel Bishop	467	3	t	etiam@ullamcorperviverramaecenas.com	$2y$10$/uTNEwOWVC1.FOB5eFN76eYI3Lp0tlXTH6DaM4RBjlTxuBu8UQK02	2022-05-08 16:06:48	2022-05-08 16:06:48
+59	Odio Semper Cursus Limited	598188-9735	2014-11-13 00:00:00	51	83062	59	974-1180 Cum Road	59.95113	51.24992	Timon Hatfield	130	1	f	ipsum@nisimauris.edu	$2y$10$.iy5rRS4ZuuSWhKK1UvAreSsOtdE0fsF5zShWViSKkg7mTH7i6ge2	2022-05-08 16:06:48	2022-05-08 16:06:48
+60	Sit PC	496815-6002	2002-03-12 00:00:00	52	1452	60	P.O. Box 880, 9209 Volutpat St.	78.58619	-139.04453	Timothy Levy	58	2	f	donec.tincidunt.donec@nullamut.ca	$2y$10$hm93mBW7WmhJ3z0FZalCgOrtizOBuGRamyzLRbuf39y3WzBkUcNyy	2022-05-08 16:06:48	2022-05-08 16:06:48
+61	Urna Suscipit Nonummy Consulting	436989-3856	2010-05-08 00:00:00	53	54468	61	527-4117 Nisi St.	85.66114	128.91869	Josiah Dunn	348	5	f	quisque@semmollis.com	$2y$10$dt32LrIiN2V0COqEGFL8o.XevASFxHRwyLVe5rTiY9wqbyYq7TDwK	2022-05-08 16:06:48	2022-05-08 16:06:48
+62	Posuere Cubilia Curae; Corp.	987019-0098	2009-05-01 00:00:00	54	71-267	62	6625 Orci. Av.	-76.55281	157.25754	Joshua Roth	364	5	t	sed.nulla.ante@elitdictum.org	$2y$10$4ssr0FAyHPnudSBxEvp8GOh/kE1rAVaM1P7CcAnGxmWxA32vml9Um	2022-05-08 16:06:48	2022-05-08 16:06:48
+63	Proin Non Massa Industries	844094-8498	1981-09-07 00:00:00	55	40306	63	311-244 Nullam Ave	-33.48850	-76.95441	Aquila Campbell	128	1	f	quis@quisarcuvel.com	$2y$10$DNcCmuDYHkKpwqeL3eGw9ewwzZUVhZnatQ0bXG5naha2priHCxA5m	2022-05-08 16:06:48	2022-05-08 16:06:48
+64	Nam Porttitor Scelerisque Incorporated	529736-5081	1985-07-31 00:00:00	56	2516	64	2838 Non St.	-83.87990	-160.58447	Micah Kim	82	3	f	dignissim.magna@maurisnondui.ca	$2y$10$z23P9QU7LiY44NkAbVbPR.u0JUcSAZztPbrrhD/KYFhwWwGZX/TCa	2022-05-08 16:06:48	2022-05-08 16:06:48
+65	Dui Semper Associates	686201-0441	1986-03-20 00:00:00	57	60112	65	908-9132 Mi St.	18.87049	-5.20058	Chandler Vasquez	425	2	f	magnis.dis.parturient@enim.net	$2y$10$A1wIWGYY.y87BGPqpzqRuuPH5dSIJf0j.X1L3pNmfgoAHllzaQ4fe	2022-05-08 16:06:48	2022-05-08 16:06:48
+66	Lectus Company	148952-0740	2004-03-05 00:00:00	58	93877	39	Ap #851-5106 Risus. Avenue	-72.44128	-167.34157	Leo Hartman	327	4	t	vitae@duiquisaccumsan.edu	$2y$10$.KKKfPOTSTlKcZOftsj1YuV2o8pHa79J.PZ2IuZ8ZXdy0j9CWHOYW	2022-05-08 16:06:48	2022-05-08 16:06:48
+67	Libero Institute	034397-9407	1976-01-15 00:00:00	59	42765	66	413-8544 Enim. Road	-82.53925	75.97331	Berk Jacobs	47	4	f	nulla.tempor.augue@litoratorquent.net	$2y$10$jF1/lHLQ5S4udmt1/ZQfMesfko4H9dbM/ljNGPxWJ3PerZeKXoEI2	2022-05-08 16:06:48	2022-05-08 16:06:48
+68	Ac Nulla Corp.	086707-9717	1997-02-26 00:00:00	32	51711	67	3553 Elementum Avenue	69.52146	-66.08975	Zeus Crawford	458	4	f	erat.vitae.risus@craseutellus.edu	$2y$10$vKU9Tj9mxsUkvCHamyu5Wu/x3y9AqHz3Mun56wJfYj027EZPsJrW.	2022-05-08 16:06:48	2022-05-08 16:06:48
+69	Sit Amet Metus PC	636578-3247	1975-08-06 00:00:00	60	RA5 1HG	68	P.O. Box 885, 6937 Aliquet Road	-75.48027	-107.60812	Dieter Vaughn	12	5	t	purus.in@pellentesque.org	$2y$10$RenUuF.n5cBfYpWWXU9.SOugJhro4RPemuzuPGrhhjyZx1c/AGgrG	2022-05-08 16:06:48	2022-05-08 16:06:48
+70	Nulla Facilisi LLP	548134-2904	1999-02-19 00:00:00	4	67111	69	1667 Bibendum Ave	48.60493	-174.39938	Jackson Baird	273	3	t	dui@aliquam.edu	$2y$10$zccV0KoIv/vIJY7DLw76euFSRxFQfaBZqMvh5NGQ/SjKTANUkimG2	2022-05-08 16:06:48	2022-05-08 16:06:48
+71	Integer Sem Consulting	172914-2701	2016-03-10 00:00:00	61	17008	55	815-4103 Ac, Street	-37.44374	-171.15375	Harlan Ferrell	251	1	t	eros.nec.tellus@etiamgravida.net	$2y$10$GtWxq5uXW0NA4wOaVNIFoeCSOETIFREpl/ZSo2RmidPxWilxg3COi	2022-05-08 16:06:48	2022-05-08 16:06:48
+72	Fermentum Arcu Vestibulum PC	296427-5461	2016-04-06 00:00:00	62	413156	70	P.O. Box 667, 6377 Egestas Av.	53.41835	-4.23415	Adam Cole	19	1	t	elit.nulla@nisiaenean.org	$2y$10$zzlbucDNYXM8fsJRb../pOCDy08HdW/z.I4kL/9Ev0.DwYdQD8hBO	2022-05-08 16:06:48	2022-05-08 16:06:48
+73	Justo Foundation	357840-0222	1984-11-02 00:00:00	63	353691	71	4289 Eu Rd.	-9.45301	60.35998	Gavin Powell	341	4	f	quam.a.felis@bibendum.net	$2y$10$43tGiXbUko3Nm6wH7T3Jw.bC6PCrwyWinGLWwZJFe5pcbE3csyZ5W	2022-05-08 16:06:48	2022-05-08 16:06:48
+74	Hendrerit A Arcu Inc.	148044-0179	2006-09-21 00:00:00	64	16413	72	291-5391 Mi Road	-35.06963	-103.10451	Sebastian Mccall	485	2	f	diam.sed.diam@dictum.edu	$2y$10$3I87hGXtTGuddrlvv63kluOHLkKlCbX9G3GRPPWZFDkJGRB231aP.	2022-05-08 16:06:48	2022-05-08 16:06:48
+75	Cursus Consulting	976892-8765	1994-09-08 00:00:00	65	Z6686	73	Ap #249-9275 Mi Road	55.19939	38.59427	Jonas Burt	331	2	t	adipiscing.elit@aptenttacitisociosqu.ca	$2y$10$V69YC4hwl1LN6BQF29C0i.OOhkjNzURJlNSF1mU5SKOdDlgDqIx7S	2022-05-08 16:06:48	2022-05-08 16:06:48
+76	Eu Company	319945-3329	1994-09-25 00:00:00	66	51845	74	P.O. Box 474, 4246 Phasellus Avenue	1.85769	121.76172	Thomas Manning	281	4	f	nullam.enim@nec.net	$2y$10$PwNq0XJED2psmtHdWLitmOKv10ItLShVv29pTLKTWroQ2b1I26e6y	2022-05-08 16:06:49	2022-05-08 16:06:49
+77	Fusce Feugiat Lorem Industries	343080-5907	1999-05-12 00:00:00	67	51417	75	854-2043 Facilisis St.	35.16104	-59.11706	Cullen Lynch	28	2	f	tempor.lorem@etiambibendumfermentum.org	$2y$10$lU2RHbBdcCz7aELLsR.bAuWkhH.KxOoES30rSyHLioy8zGQD/jadi	2022-05-08 16:06:49	2022-05-08 16:06:49
+78	Tortor PC	125087-8269	2016-11-04 00:00:00	68	73642	76	P.O. Box 188, 2095 Turpis Avenue	81.66685	-132.95289	Connor Barrera	366	1	f	leo.elementum.sem@metus.ca	$2y$10$svJ239MWjbix2s01GOBGqOQx/HNGPGCewtNvPEqeOX3j6/SFA2La2	2022-05-08 16:06:49	2022-05-08 16:06:49
+79	Et Ultrices Posuere Company	659366-9846	2002-04-08 00:00:00	69	12365	77	6336 Risus. Rd.	84.48759	24.76425	Ahmed Calhoun	90	2	t	risus@sociis.net	$2y$10$V3Mr.ab7FgGQ43oTo9zaROcMmAs8Ly8QCkyG6O1jP9RgkT.mzHOXa	2022-05-08 16:06:49	2022-05-08 16:06:49
+80	Euismod Ltd	505754-2507	1981-03-26 00:00:00	70	85892	78	Ap #285-6662 Non Road	-48.42863	-112.47054	Emmanuel Perez	134	3	f	cum.sociis@duis.co.uk	$2y$10$K6SykaAbvXQuCMqoOI4lRu7GULRRUEo4SF3IQ2wgxcNHTDC6d5DIy	2022-05-08 16:06:49	2022-05-08 16:06:49
+81	Donec Company	905581-3969	1998-01-23 00:00:00	71	Z8653	79	P.O. Box 952, 5590 Accumsan Rd.	23.31353	-148.37050	Lev Simon	184	2	f	proin@molestiein.edu	$2y$10$MzW1eeCk8Auskjw44C7PJOuhixe6Y59A3Pjy/HqGf0H4Wq2nURn0O	2022-05-08 16:06:49	2022-05-08 16:06:49
+82	Neque Nullam Corporation	496430-6353	1994-04-16 00:00:00	72	27618-39013	80	P.O. Box 764, 1587 Dis Rd.	31.90824	150.07572	Nathaniel Burt	284	1	t	elit.fermentum@phasellus.co.uk	$2y$10$du8bD2FMsJy5MYcZrYeDWOwc2VFzSOhJU8iRLDKP4TC.y9cxbypxa	2022-05-08 16:06:49	2022-05-08 16:06:49
+83	Vulputate Associates	673363-7430	1996-06-06 00:00:00	15	37724	81	P.O. Box 922, 8151 Volutpat Rd.	74.14739	-59.65905	Armand Howell	442	3	t	dis.parturient@eros.co.uk	$2y$10$tBt.n5WiTU.5NpSNsCH5Iek75KGvfz9Mp1ZX0d.Cx01ZPeGdMTtIi	2022-05-08 16:06:49	2022-05-08 16:06:49
+84	Ligula Aliquam Erat Ltd	806640-1772	2016-11-07 00:00:00	36	697586	82	P.O. Box 722, 8313 Laoreet Road	-34.46051	13.72711	Patrick Mcfarland	405	4	f	orci@pede.com	$2y$10$J71uS5mDJ0/ZiZUjrSFk3.3Fc3vYu2sbfaPoV9ej6odC.v6DwCnKK	2022-05-08 16:06:49	2022-05-08 16:06:49
+85	Tortor Integer Associates	359548-8556	1976-12-10 00:00:00	73	85437	28	P.O. Box 987, 7081 Sem. Avenue	-82.42214	116.38578	Isaiah Love	409	2	f	feugiat.nec.diam@sagittis.org	$2y$10$m0fO5djR.dSBymFwtbskUuFkkXs477CVNJpt82NA.qoSWofIrXnCu	2022-05-08 16:06:49	2022-05-08 16:06:49
+86	Ligula LLC	956856-4844	1996-07-24 00:00:00	54	7748	83	P.O. Box 335, 394 Dictum Av.	-23.00652	96.81938	Griffin Mcintyre	466	1	f	augue.scelerisque.mollis@afelisullamcorper.net	$2y$10$PDJPB5/bTLJTBhCZvmfcG.Ipc7IAkLyf47LSfa8K4TzGXtpPPCWn2	2022-05-08 16:06:49	2022-05-08 16:06:49
+87	Et Commodo Limited	442801-8735	2002-12-20 00:00:00	47	8396	84	7720 Quisque Ave	60.00947	66.99372	Kermit Maddox	310	3	t	penatibus@dapibusidblandit.edu	$2y$10$AjfHF9nNkbH18REw2rg7N.M9bSVGt3Uqxqn4se52rRb06UoHKqqp6	2022-05-08 16:06:49	2022-05-08 16:06:49
+88	Aliquet Metus Urna Associates	203888-3068	2004-12-05 00:00:00	30	241312	85	Ap #632-6950 In Street	53.25403	132.63357	Fletcher Langley	213	1	f	dictum@egestassed.ca	$2y$10$oJoZ4QgMvvI.XHRm7mR95uHTVvtk5ryMD.c0iLU31gbq8Mzm/gDV6	2022-05-08 16:06:49	2022-05-08 16:06:49
+89	Elit Sed Consequat Foundation	742337-5281	1976-01-08 00:00:00	38	72654-179	86	2153 Sit Avenue	-73.94114	142.51448	Austin Mayer	57	1	f	a.arcu@eget.com	$2y$10$6V7RAbUHWCHM1MIewYQVJ.0A5Lcur0xh0xGS5FUc5bs9v93JVJ3bO	2022-05-08 16:06:49	2022-05-08 16:06:49
+90	Elit Pede LLP	484250-8378	2017-11-24 00:00:00	74	870133	87	Ap #112-122 In Street	-43.28177	148.36225	Mark Alvarez	378	2	t	donec.est@sed.edu	$2y$10$06DCwWGJKgpUch7DoSuuDudeAwN5ivTzlyPTkoYiLQwCHhG87PQvy	2022-05-08 16:06:49	2022-05-08 16:06:49
+91	Elementum LLP	503420-9477	2008-12-11 00:00:00	75	2589	53	P.O. Box 805, 3745 Ultrices Av.	62.52045	120.79172	Francis Pacheco	191	5	t	nulla@tempuseu.co.uk	$2y$10$eVmmprCRVZ2br9g5VCR3met8b.cDJCAAsTn6o8.9/K8UkVwu8AsS6	2022-05-08 16:06:49	2022-05-08 16:06:49
+92	Et Eros Ltd	032113-0866	2016-07-26 00:00:00	76	99198	88	811-8295 Lectus St.	16.60793	-101.78048	Barclay Moran	98	2	f	mauris@eget.ca	$2y$10$liIkPodkYlsVR4SPrjgQTON1aL5qsi8as56tm3xDd5mAE3sYnYoFC	2022-05-08 16:06:49	2022-05-08 16:06:49
+93	Sit Amet Risus Corporation	489799-8763	1979-05-06 00:00:00	77	66173	89	P.O. Box 274, 579 Sit Avenue	29.51780	4.56206	Tobias Peck	63	3	f	dignissim@malesuadavelconvallis.co.uk	$2y$10$mXEqrYUBznWSVQc3gBOkP.HHxuSTJTOIpjeOjqam/YIJGp7CslXhq	2022-05-08 16:06:49	2022-05-08 16:06:49
+94	Tristique Company	404399-6885	2002-06-28 00:00:00	78	709185	90	P.O. Box 660, 911 Curabitur St.	-12.46639	-47.80895	Stone Fletcher	117	3	f	aliquam@odiosagittissemper.ca	$2y$10$r3f6DSZtLopvdc8ceJXFtu0SOvEdwfnAeuNgagCiliIb0.z5oKFgO	2022-05-08 16:06:49	2022-05-08 16:06:49
+95	Eu Tellus Eu Associates	148798-5010	2001-07-18 00:00:00	79	49633	91	749-2666 Volutpat. St.	-56.47309	-85.77269	Porter Anderson	275	1	t	in.scelerisque.scelerisque@urna.com	$2y$10$WtszSQgTWsnTUtIIGB0QAuskCTGjbvXWLp2AI.bt75DPz3scNN2rm	2022-05-08 16:06:50	2022-05-08 16:06:50
+96	Cursus Non Corporation	993494-9752	1989-09-01 00:00:00	80	6489 OA	92	7401 Blandit Av.	-59.45704	-113.11917	Kareem Hansen	89	1	t	vitae.odio.sagittis@ridiculus.ca	$2y$10$T8QXHCDVEdWa7kNGMOcL5OM8KeoL7LrMAi2qDJjT/KBwTpa3t1XMe	2022-05-08 16:06:50	2022-05-08 16:06:50
+97	Erat LLP	674411-4775	2013-11-01 00:00:00	5	Z5708	93	Ap #960-133 Arcu. Rd.	-37.52415	-121.76164	Amos Osborn	164	3	t	nunc@ametorci.net	$2y$10$.a81W60/jEXuco.GRUukKumgPC0Lsd29cOE0vabIjrL1vfHZ3mFZy	2022-05-08 16:06:50	2022-05-08 16:06:50
+98	Et Consulting	232008-1199	2013-03-24 00:00:00	81	Z3020	94	1073 Turpis. St.	-10.23881	16.91773	Palmer Norman	248	5	t	libero@vitaesemper.co.uk	$2y$10$n12FsMvQvLV14oNu8bxiG./iUfTliViPzlxmkb2EXWHrDA2WQ9rg.	2022-05-08 16:06:50	2022-05-08 16:06:50
+99	Lacus Associates	219173-9727	1989-02-08 00:00:00	82	14914	95	6688 Metus. St.	76.54404	-91.16178	Akeem Porter	42	5	t	duis.ac.arcu@non.co.uk	$2y$10$7mwqm2k88SAvTMj3gbRcju1aItPgEQ3GuYkSG0Bq/0u/TsppspN0q	2022-05-08 16:06:50	2022-05-08 16:06:50
+100	Enim Associates	488428-9150	2011-11-11 00:00:00	83	44419	96	5003 Quam Avenue	72.31592	-174.92451	Callum Leonard	392	4	f	nisi.cum@quama.com	$2y$10$9scVUeqsLv7GZ2QXY4SvPOVE2w9oxbigh0Z5mWJ4GCm0slTqwoSvW	2022-05-08 16:06:50	2022-05-08 16:06:50
+101	Teszt	2222222	2001-01-01 00:00:00	84	1111	97	Utca	0.00000	0.00000	Én	1	6	t	asdasd	$2y$10$S3vjVXokNiiuKXUv8yjD7.g9dhec45eD7ucq50Vt1Lct1k4Otxs5G	2022-05-08 16:07:19	2022-05-08 16:07:19
+\.
+
+
+--
+-- Data for Name: countries; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.countries (id, name, created_at, updated_at) FROM stdin;
+1	Belarus	2022-05-08 16:06:45	2022-05-08 16:06:45
+2	Philippines	2022-05-08 16:06:45	2022-05-08 16:06:45
+3	Western Sahara	2022-05-08 16:06:45	2022-05-08 16:06:45
+4	Northern Mariana Islands	2022-05-08 16:06:45	2022-05-08 16:06:45
+5	French Guiana	2022-05-08 16:06:45	2022-05-08 16:06:45
+6	United Arab Emirates	2022-05-08 16:06:45	2022-05-08 16:06:45
+7	Algeria	2022-05-08 16:06:45	2022-05-08 16:06:45
+8	Denmark	2022-05-08 16:06:45	2022-05-08 16:06:45
+9	Albania	2022-05-08 16:06:45	2022-05-08 16:06:45
+10	Korea, North	2022-05-08 16:06:45	2022-05-08 16:06:45
+11	Nauru	2022-05-08 16:06:45	2022-05-08 16:06:45
+12	Ecuador	2022-05-08 16:06:45	2022-05-08 16:06:45
+13	Armenia	2022-05-08 16:06:45	2022-05-08 16:06:45
+14	Falkland Islands	2022-05-08 16:06:45	2022-05-08 16:06:45
+15	Ireland	2022-05-08 16:06:45	2022-05-08 16:06:45
+16	Dominica	2022-05-08 16:06:45	2022-05-08 16:06:45
+17	Lesotho	2022-05-08 16:06:45	2022-05-08 16:06:45
+18	Marshall Islands	2022-05-08 16:06:45	2022-05-08 16:06:45
+19	Sri Lanka	2022-05-08 16:06:46	2022-05-08 16:06:46
+20	Bosnia and Herzegovina	2022-05-08 16:06:46	2022-05-08 16:06:46
+21	Czech Republic	2022-05-08 16:06:46	2022-05-08 16:06:46
+22	Finland	2022-05-08 16:06:46	2022-05-08 16:06:46
+23	Norway	2022-05-08 16:06:46	2022-05-08 16:06:46
+24	Saint Lucia	2022-05-08 16:06:46	2022-05-08 16:06:46
+25	Bermuda	2022-05-08 16:06:46	2022-05-08 16:06:46
+26	Martinique	2022-05-08 16:06:46	2022-05-08 16:06:46
+27	Macao	2022-05-08 16:06:46	2022-05-08 16:06:46
+28	China	2022-05-08 16:06:46	2022-05-08 16:06:46
+29	Suriname	2022-05-08 16:06:46	2022-05-08 16:06:46
+30	Tonga	2022-05-08 16:06:46	2022-05-08 16:06:46
+31	Kiribati	2022-05-08 16:06:46	2022-05-08 16:06:46
+32	Kyrgyzstan	2022-05-08 16:06:46	2022-05-08 16:06:46
+33	Jersey	2022-05-08 16:06:46	2022-05-08 16:06:46
+34	Congo, the Democratic Republic of the	2022-05-08 16:06:46	2022-05-08 16:06:46
+35	Central African Republic	2022-05-08 16:06:46	2022-05-08 16:06:46
+36	Singapore	2022-05-08 16:06:47	2022-05-08 16:06:47
+37	Lithuania	2022-05-08 16:06:47	2022-05-08 16:06:47
+38	Guinea-Bissau	2022-05-08 16:06:47	2022-05-08 16:06:47
+39	Isle of Man	2022-05-08 16:06:47	2022-05-08 16:06:47
+40	Curaçao	2022-05-08 16:06:47	2022-05-08 16:06:47
+41	Hong Kong	2022-05-08 16:06:47	2022-05-08 16:06:47
+42	Burkina Faso	2022-05-08 16:06:47	2022-05-08 16:06:47
+43	Laos	2022-05-08 16:06:47	2022-05-08 16:06:47
+44	Moldova	2022-05-08 16:06:47	2022-05-08 16:06:47
+45	Mauritania	2022-05-08 16:06:47	2022-05-08 16:06:47
+46	Barbados	2022-05-08 16:06:47	2022-05-08 16:06:47
+47	France	2022-05-08 16:06:47	2022-05-08 16:06:47
+48	Reunion	2022-05-08 16:06:47	2022-05-08 16:06:47
+49	Sweden	2022-05-08 16:06:47	2022-05-08 16:06:47
+50	Swaziland	2022-05-08 16:06:48	2022-05-08 16:06:48
+51	Spain	2022-05-08 16:06:48	2022-05-08 16:06:48
+52	Heard Island and Mcdonald Islands	2022-05-08 16:06:48	2022-05-08 16:06:48
+53	Kuwait	2022-05-08 16:06:48	2022-05-08 16:06:48
+54	Cuba	2022-05-08 16:06:48	2022-05-08 16:06:48
+55	Grenada	2022-05-08 16:06:48	2022-05-08 16:06:48
+56	Mali	2022-05-08 16:06:48	2022-05-08 16:06:48
+57	Turkmenistan	2022-05-08 16:06:48	2022-05-08 16:06:48
+58	Botswana	2022-05-08 16:06:48	2022-05-08 16:06:48
+59	Virgin Islands, United States	2022-05-08 16:06:48	2022-05-08 16:06:48
+60	Turkey	2022-05-08 16:06:48	2022-05-08 16:06:48
+61	Libya	2022-05-08 16:06:48	2022-05-08 16:06:48
+62	Tajikistan	2022-05-08 16:06:48	2022-05-08 16:06:48
+63	Niger	2022-05-08 16:06:48	2022-05-08 16:06:48
+64	Austria	2022-05-08 16:06:48	2022-05-08 16:06:48
+65	Mexico	2022-05-08 16:06:48	2022-05-08 16:06:48
+66	Nigeria	2022-05-08 16:06:49	2022-05-08 16:06:49
+67	Uruguay	2022-05-08 16:06:49	2022-05-08 16:06:49
+68	Equatorial Guinea	2022-05-08 16:06:49	2022-05-08 16:06:49
+69	Estonia	2022-05-08 16:06:49	2022-05-08 16:06:49
+70	Papua New Guinea	2022-05-08 16:06:49	2022-05-08 16:06:49
+71	Lebanon	2022-05-08 16:06:49	2022-05-08 16:06:49
+72	Bangladesh	2022-05-08 16:06:49	2022-05-08 16:06:49
+73	Ethiopia	2022-05-08 16:06:49	2022-05-08 16:06:49
+74	Comoros	2022-05-08 16:06:49	2022-05-08 16:06:49
+75	Saint Pierre and Miquelon	2022-05-08 16:06:49	2022-05-08 16:06:49
+76	Saudi Arabia	2022-05-08 16:06:49	2022-05-08 16:06:49
+77	Montenegro	2022-05-08 16:06:49	2022-05-08 16:06:49
+78	South Sudan	2022-05-08 16:06:49	2022-05-08 16:06:49
+79	Venezuela	2022-05-08 16:06:50	2022-05-08 16:06:50
+80	Cayman Islands	2022-05-08 16:06:50	2022-05-08 16:06:50
+81	Chad	2022-05-08 16:06:50	2022-05-08 16:06:50
+82	Congo (Brazzaville)	2022-05-08 16:06:50	2022-05-08 16:06:50
+83	Sao Tome and Principe	2022-05-08 16:06:50	2022-05-08 16:06:50
+84	Hungary	2022-05-08 16:07:19	2022-05-08 16:07:19
+\.
+
+
+--
+-- Data for Name: failed_jobs; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.failed_jobs (id, uuid, connection, queue, payload, exception, failed_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: migrations; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.migrations (id, migration, batch) FROM stdin;
+1	2014_10_12_000000_create_users_table	1
+2	2014_10_12_100000_create_password_resets_table	1
+3	2019_08_19_000000_create_failed_jobs_table	1
+4	2019_12_14_000001_create_personal_access_tokens_table	1
+5	2022_05_04_151811_create_countries_table	1
+6	2022_05_04_151848_create_cities_table	1
+7	2022_05_04_151910_create_activities_table	1
+8	2022_05_04_160411_create_companies_table	1
+\.
+
+
+--
+-- Data for Name: password_resets; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.password_resets (email, token, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: personal_access_tokens; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.personal_access_tokens (id, tokenable_type, tokenable_id, name, token, abilities, last_used_at, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: groot
+--
+
+COPY public.users (id, name, email, email_verified_at, password, remember_token, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Name: activities_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.activities_id_seq', 6, true);
+
+
+--
+-- Name: cities_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.cities_id_seq', 97, true);
+
+
+--
+-- Name: companies_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.companies_id_seq', 101, true);
+
+
+--
+-- Name: countries_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.countries_id_seq', 84, true);
+
+
+--
+-- Name: failed_jobs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.failed_jobs_id_seq', 1, false);
+
+
+--
+-- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.migrations_id_seq', 8, true);
+
+
+--
+-- Name: personal_access_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.personal_access_tokens_id_seq', 1, false);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: groot
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 1, false);
+
+
+--
+-- Name: activities activities_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.activities
+    ADD CONSTRAINT activities_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cities cities_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.cities
+    ADD CONSTRAINT cities_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: companies companies_email_unique; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_email_unique UNIQUE (email);
+
+
+--
+-- Name: companies companies_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: countries countries_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.countries
+    ADD CONSTRAINT countries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: failed_jobs failed_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.failed_jobs
+    ADD CONSTRAINT failed_jobs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: failed_jobs failed_jobs_uuid_unique; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.failed_jobs
+    ADD CONSTRAINT failed_jobs_uuid_unique UNIQUE (uuid);
+
+
+--
+-- Name: migrations migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.migrations
+    ADD CONSTRAINT migrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: personal_access_tokens personal_access_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.personal_access_tokens
+    ADD CONSTRAINT personal_access_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: personal_access_tokens personal_access_tokens_token_unique; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.personal_access_tokens
+    ADD CONSTRAINT personal_access_tokens_token_unique UNIQUE (token);
+
+
+--
+-- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_email_unique UNIQUE (email);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: password_resets_email_index; Type: INDEX; Schema: public; Owner: groot
+--
+
+CREATE INDEX password_resets_email_index ON public.password_resets USING btree (email);
+
+
+--
+-- Name: personal_access_tokens_tokenable_type_tokenable_id_index; Type: INDEX; Schema: public; Owner: groot
+--
+
+CREATE INDEX personal_access_tokens_tokenable_type_tokenable_id_index ON public.personal_access_tokens USING btree (tokenable_type, tokenable_id);
+
+
+--
+-- Name: companies protect_found_date_trigger; Type: TRIGGER; Schema: public; Owner: groot
+--
+
+CREATE TRIGGER protect_found_date_trigger BEFORE UPDATE OF found_date ON public.companies FOR EACH ROW EXECUTE FUNCTION public.protect_found_date();
+
+
+--
+-- Name: companies companies_activity_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_activity_id_foreign FOREIGN KEY (activity_id) REFERENCES public.activities(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: companies companies_city_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_city_id_foreign FOREIGN KEY (city_id) REFERENCES public.cities(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: companies companies_country_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: groot
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_country_id_foreign FOREIGN KEY (country_id) REFERENCES public.countries(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
